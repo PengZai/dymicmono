@@ -16,14 +16,14 @@ class KittiRawDataset(KittiDataset):
   def get_image_path(self, folder, frame_index, side):
         f_str = "{:010d}{}".format(frame_index, self.config.cfg.kitti.img_ext)
         image_path = os.path.join(
-            self.config.cfg.kitti.raw_root, folder, "image_0{}/data".format(self.side_map[side]), f_str)
+            self.config.cfg.kitti.root, folder, "image_0{}/data".format(self.side_map[side]), f_str)
         return image_path
       
   def get_depth(self, folder, frame_index, side):
-        calib_path = os.path.join(self.config.cfg.kitti.raw_root, folder.split("/")[0])
+        calib_path = os.path.join(self.config.cfg.kitti.root, folder.split("/")[0])
 
         velo_filename = os.path.join(
-            self.config.cfg.kitti.raw_root,
+            self.config.cfg.kitti.root,
             folder,
             "velodyne_points/data/{:010d}.bin".format(int(frame_index)))
 
@@ -91,9 +91,9 @@ class KittiRawDataset(KittiDataset):
     K[0, :] *= self.config.cfg.base.image_width
     # fy is related to image height
     K[1, :] *= self.config.cfg.base.image_heigh
-    inv_K = np.linalg.pinv(K)
-    input_dict["K"] = torch.from_numpy(K)
-    input_dict["inv_K"] = torch.from_numpy(inv_K)
+    K = torch.from_numpy(K)
+    input_dict["K"] = K
+    input_dict["inv_K"] = torch.linalg.pinv(K)
 
     for nidx in self.config.cfg.base.neighbor_frame_idxs:
       image = self.pil_loader(self.get_image_path(folder, frame_idx+nidx, side))

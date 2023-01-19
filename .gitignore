@@ -1,6 +1,7 @@
+__pycache__
+*.pyc
 modelzoo
 logs
 checkpoints
 work_dirs
 examples
-*.pyc

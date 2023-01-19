@@ -14,11 +14,13 @@ class EgoTransferDecoder(nn.Module):
     self.config = config
     
     # self.linear1 = nn.Linear()  
-    self.conv = nn.Conv2d(4096, 512, 3)
+    self.conv1 = nn.Conv2d(4096, 512, 3)
+    self.conv2 = nn.Conv2d(512, 128, 3)
+    self.conv3 = nn.Conv2d(128, 6, 1)
     self.conv_nonlin = nn.ELU(inplace=True)
-    self.maxpool = nn.AdaptiveMaxPool2d(1)
+    self.avgpool = nn.AdaptiveAvgPool2d(1)
     self.flatten = nn.Flatten()
-    self.linear = nn.Linear(512, 12)
+    
 
     
     
@@ -26,13 +28,19 @@ class EgoTransferDecoder(nn.Module):
     
     last_feature_list = [f[-1] for f in feature_list]
     features = torch.cat(last_feature_list, dim=1)
-    x = self.conv(features)
+    x = self.conv1(features)
     x = self.conv_nonlin(x)
-    x = self.maxpool(x)
-    x = self.flatten(x)
-    x = self.linear(x)
-    matrix = x.view(-1, 3, 4)
-    matrix = F.pad(input=matrix, pad=(0, 0, 0, 1), mode='constant', value=0.0)
-    matrix[:, :, -1][:, -1] = 1.0
     
-    return matrix
+    x = self.conv2(x)
+    x = self.conv_nonlin(x)
+    
+    x = self.conv3(x)
+    x = self.conv_nonlin(x)
+
+    x = self.avgpool(x)
+    x = self.flatten(x)
+    matrix = 0.01*x.view(-1, 6)
+    axisangle = matrix[..., :3]
+    translation = matrix[..., 3:]
+    
+    return axisangle, translation

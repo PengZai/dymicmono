@@ -2,20 +2,22 @@ import os
 import sys
 # add your workspaceFolder to python path
 sys.path.append(os.getcwd())
+
 from utils import set_random_seed
-from trainer import Trainer
-import shutil
-from distribution import DistTools
+from validator import Validator
+import torch
+import numpy as np
 import argparse
-import logging
 from mmcv import Config
+from distribution import DistTools
 from torch.utils.tensorboard import SummaryWriter
+import logging
 
 
-class TrainConfig(object):
+class ValidatorConfig(object):
   def __init__(self):
     
-    self.preparser = argparse.ArgumentParser(description="dymicmomo train")
+    self.preparser = argparse.ArgumentParser(description="dymicmomo valid")
     
     self.preparser.add_argument("--config_options",
                              type=str,
@@ -28,21 +30,15 @@ class TrainConfig(object):
     
     self.preparser.add_argument("--modelzoo_dir",
                              type=str,
-                             default="modelzoo",
-                             help="modelzoo saved directory",
-                             )
-    
-    self.preparser.add_argument("--work_dirs",
-                             type=str,
                              default="work_dirs",
-                             help="work directory which you save model checkpoint, logs, config",
+                             help="modelzoo saved directory",
                              )
     
     self.preparser.add_argument("--model_checkpoint_name",
                              type=str,
-                             default="latest",
-                             help="it is model checkpoint name saved in work_dirs, \
-                               there are option [latest, special name]",
+                             default="e149.pt",
+                             help="it is model checkpoint name saved in checkpoint_dir \
+                               you must specify one",
                              )
     
     self.preparser.add_argument("--model_structure",
@@ -62,19 +58,11 @@ class TrainConfig(object):
                                 type=int,
                                 help="gpu id of processing thread"
                                 )
-
     
-    # self.preparser.add_argument("--local_rank",
-    #                             default=0,
-    #                             type=int,
-    #                             help="gpu id of processing thread"
-    #                             )
-    
-   
-    self.preparser.add_argument("--train_from_scratch",
+    self.preparser.add_argument("--visual_all",
                                 action='store_true',
                                 default=False,
-                                help = ""
+                                help = "visualize all validation data"
                                 )
 
     self.preparser.add_argument('--validate_dataset_list',  # either of this switches
@@ -88,68 +76,50 @@ class TrainConfig(object):
     self.args = self.preparser.parse_args()
     self.args.local_rank = int(os.environ["LOCAL_RANK"])
 
-    self.cfg = Config.fromfile(os.path.join('configs', self.args.config_options) + '.py')
+    self.cfg = Config.fromfile(os.path.join(self.args.modelzoo_dir,
+                                            self.args.config_options,
+                                            'config',
+                                            self.args.config_options) + '.py')
     
     self.create_work_dirs()
-    
     set_random_seed(self.cfg.base.random_seed)
     
+  
   def create_work_dirs(self):
     
-    # project 
-    if not os.path.exists(os.path.join(self.args.work_dirs, 
-                                       self.args.config_options)):
-      os.makedirs(os.path.join(self.args.work_dirs, 
-                               self.args.config_options))
     
-    # config
-    if not os.path.exists(os.path.join(self.args.work_dirs, 
-                                       self.args.config_options, 
-                                       self.cfg.base.work_dirs_structure.config)):
-      os.makedirs(os.path.join(self.args.work_dirs, 
-                               self.args.config_options, 
-                               self.cfg.base.work_dirs_structure.config))
-    
-    # copy config to work_dirs/${project_name}/config/{config_name}.py
-    shutil.copyfile(os.path.join('configs', self.args.config_options + '.py'), 
-                    os.path.join(self.args.work_dirs, 
-                                 self.args.config_options, 
-                                 self.cfg.base.work_dirs_structure.config, 
-                                 self.args.config_options+'.py'))
-
     # logs
-    self.args.log_dir = os.path.join(self.args.work_dirs, 
+    self.args.log_dir = os.path.join(self.args.modelzoo_dir, 
                                        self.args.config_options, 
                                        self.cfg.base.work_dirs_structure.logs,
-                                       "train")
+                                       "validate")
     if not os.path.exists(self.args.log_dir):
       os.makedirs(self.args.log_dir)
       
     # tensorboard
-    self.args.tensorboard_dir = os.path.join(self.args.work_dirs, 
+    self.args.tensorboard_dir = os.path.join(self.args.modelzoo_dir, 
                 self.args.config_options, 
                 self.cfg.base.work_dirs_structure.tensorboard,
-                "train")
+                "validate")
     if not os.path.exists(self.args.tensorboard_dir):
       os.makedirs(self.args.tensorboard_dir)
     
     self.init_logs()
     
     # visualization
-    self.args.visualization_dir = os.path.join(self.args.work_dirs, 
+    self.args.visualization_dir = os.path.join(self.args.modelzoo_dir, 
                                        self.args.config_options, 
                                        self.cfg.base.work_dirs_structure.vis,
-                                       "train")
+                                       "validate")
     if not os.path.exists(self.args.visualization_dir):
       os.makedirs(self.args.visualization_dir)
-
-    
+      
     # checkpoints
-    self.args.checkpoints_dir = os.path.join(self.args.work_dirs, 
+    self.args.checkpoints_path = os.path.join(self.args.modelzoo_dir, 
                                        self.args.config_options, 
-                                       self.cfg.base.work_dirs_structure.checkpoints)
-    if not os.path.exists(self.args.checkpoints_dir):
-      os.makedirs(self.args.checkpoints_dir)
+                                       self.cfg.base.work_dirs_structure.checkpoints,
+                                       self.args.model_checkpoint_name)
+
 
   
   def init_logs(self,):
@@ -163,19 +133,21 @@ class TrainConfig(object):
     )
     
     
-    
-    DistTools.setStaticVarible( self.args,
-                                master_gpu_id=self.args.master_gpu_id)
-    
+    DistTools.setStaticVarible(args=self.args,
+                               master_gpu_id=self.args.master_gpu_id)
 
-
+    
+    
+    
 if __name__ == '__main__':
   
-
-  config = TrainConfig()
+  config = ValidatorConfig()
+  validator = Validator(config)
+  validator.load_models()
   
-  trainer = Trainer(config)
-  trainer.train()
-  
+  validator.validate()
   DistTools.dist_print('Done')
   DistTools.cleanup()
+  
+
+  

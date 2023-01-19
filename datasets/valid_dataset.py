@@ -2,11 +2,13 @@ from .kitti import KittiRawDataset
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 import os
+from .basic_dataset import BasicDataset
 
 
-class ValidDataset(object):
+class ValidDataset(BasicDataset):
   def __init__(self, config):
-    
+    super(ValidDataset, self).__init__(config)
+
     self.config = config
     
     # kitti
@@ -21,7 +23,9 @@ class ValidLoader(object):
   def __init__(self, config, dataset, validation_config):
     self.config = config
     self.dataset = dataset
-    self.sampler = DistributedSampler(self.dataset)
+    self.sampler = DistributedSampler(self.dataset,
+                                      shuffle=False,
+                                      )
     self.loader = DataLoader(self.dataset, 
                                    validation_config.batch_size, 
                                    num_workers=validation_config.num_worker,
@@ -30,14 +34,8 @@ class ValidLoader(object):
                                    shuffle=False,
                                    sampler=self.sampler,
                                    )
-    self.vis_loader = DataLoader(self.dataset, 
-                                   self.config.cfg.visualization.batch_size, 
-                                   num_workers=self.config.cfg.visualization.num_worker,
-                                   drop_last=False,
-                                   pin_memory=True,
-                                   shuffle=False,
-                                   )
-    self.vis_example = next(iter(self.vis_loader))
+    
+    
     
     
     

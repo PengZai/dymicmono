@@ -5,23 +5,54 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
+      "name": "Distributed Train",
       "type": "python",
       "request": "launch",
       "program": "/home/pengzai/anaconda3/envs/swin/lib/python3.10/site-packages/torch/distributed/run.py",
       "console": "integratedTerminal",
-      "cwd":"${workspaceFolder}",
-      "env":{
-        "CUDA_VISIBLE_DEVICES":"1,2,3"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CUDA_VISIBLE_DEVICES": "0,1,2,3"
       },
       "justMyCode": true,
-      "args":[
+      "args": [
+        "--rdzv_backend=c10d",
+        "--rdzv_endpoint=localhost:0",
+        "--nnodes=1",
+        "--nproc_per_node=4",
+        "project/train.py"
+      ]
+    },
+    {
+      "name": "Distributed Validate",
+      "type": "python",
+      "request": "launch",
+      "program": "/home/pengzai/anaconda3/envs/swin/lib/python3.10/site-packages/torch/distributed/run.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CUDA_VISIBLE_DEVICES": "0,1,2,3"
+      },
+      "justMyCode": true,
+      "args": [
         "--rdzv_backend=c10d",
         "--rdzv_endpoint=localhost:0",
         "--nnodes=1",
         "--nproc_per_node=1",
-        "project/train.py"
+        "project/validate.py",
+        "--visual_all"
       ]
-    }
+    },
+    {
+      "name": "Distributed Visulize",
+      "type": "python",
+      "request": "launch",
+      "program": "project/visualize.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "args": [
+      ]
+    },
   ]
 }

@@ -3,7 +3,7 @@ import torch.nn as nn
 from .depth_decoder import DepthDecoder
 from .ego_transfer_decoder import EgoTransferDecoder
 from .encoder import Encoder
-from networks import GeometryTransfer 
+from networks import GeometryTransfer, GeometryProjectTransfer
 from losses import ReprojectionLoss
 
 class CnnDepthEstimator(nn.Module):
@@ -21,6 +21,8 @@ class CnnDepthEstimator(nn.Module):
     self.ego_transfer_decoder = EgoTransferDecoder(config)
      
     self.geometry_transfer = GeometryTransfer(config)
+    
+    self.geometry_project_transfer = GeometryProjectTransfer(config)
     
     self.reprojection_loss = ReprojectionLoss(config)
     
@@ -41,7 +43,7 @@ class CnnDepthEstimator(nn.Module):
     for i, idx in enumerate(self.config.cfg.base.neighbor_frame_idxs[1:]):
       
       pred = output_dict[('wrap_color', idx)]
-      target = input_dict['color', idx]
+      target = input_dict[('color', idx)]
       reprojection_loss.append(self.reprojection_loss(pred, target))
       
     reprojection_loss = torch.cat(reprojection_loss, dim=1)
