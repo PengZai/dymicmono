@@ -23,8 +23,24 @@ base = dict(
     checkpoints = "checkpoints",
     logs = "logs",
     vis = "vis",
-  )
+    tensorboard = "tensorboard",
+  ),
   
+  image_ext = [
+    '.jpg',
+    '.jpeg',
+    '.JPG',
+    '.JPEG',
+    '.png',
+    '.PNG',
+  ]
+  
+)
+
+
+visualization = dict(
+  batch_size = 8,
+  num_worker = 0,
 )
 
 

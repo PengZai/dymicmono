@@ -11,27 +11,34 @@ class DistTools(object):
   # tensorboard writer
   tb_writer = None
   
-  def __init__(self, config):
+  
+  def __init__(self,):
+    pass
     
-    self.config = config
-    
-    dist.init_process_group(backend='nccl', init_method='env://')
-    torch.cuda.set_device(config.args.local_rank)
   
   @staticmethod
-  def setStaticVarible(master_gpu_id, tb_writer):
+  def cleanup():
+    dist.destroy_process_group()
+  
+  @staticmethod
+  def setStaticVarible(args, master_gpu_id):
     DistTools.master_gpu_id = master_gpu_id
-    DistTools.tb_writer = tb_writer
+    
+    dist.init_process_group(backend='nccl', init_method='env://')
+    torch.cuda.set_device(args.local_rank)
+    
+    if DistTools.isMasterGPU():
+      DistTools.tb_writer = SummaryWriter(log_dir = args.tensorboard_dir)
     
   
   @staticmethod
   def dist_print(str):
-      if DistTools.isMasterGPU():
+      if DistTools.isDistAvailable() and DistTools.isMasterGPU():
           print(str)
           
   @staticmethod
   def dist_log(str):
-      if DistTools.isMasterGPU():
+      if DistTools.isDistAvailable() and DistTools.isMasterGPU():
           logging.debug(str)
           
   @staticmethod
@@ -49,6 +56,16 @@ class DistTools(object):
   def isMasterGPU():
       # we set gpu device 0 as log device.
       return dist.get_rank() == DistTools.master_gpu_id
+    
+  @staticmethod
+  def isDistAvailable():
+    if not dist.is_available():
+        return False
+
+    if not dist.is_initialized():
+        return False
+
+    return True
     
   
     

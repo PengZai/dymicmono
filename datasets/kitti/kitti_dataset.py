@@ -12,6 +12,7 @@ class KittiDataset(BasicDataset):
     super(KittiDataset, self).__init__(config)
     
     self.config = config
+    self.dataset_config = self.config.cfg.kitti
     self.name = 'kitti'
     self.K = self.config.cfg.kitti.camera.intrinsics
     
@@ -27,15 +28,7 @@ class KittiDataset(BasicDataset):
 
     self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
     
-    self.torch_transforms = transforms.Compose([
-      transforms.Resize((self.config.cfg.base.image_heigh, self.config.cfg.base.image_width)),
-      transforms.ToTensor()] 
-    )
-  
-  def preprocess_pipline(self, x):
     
-    x = self.torch_transforms(x)
-    return x
   
   
   
